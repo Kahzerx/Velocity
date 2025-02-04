@@ -21,6 +21,8 @@ A list of small tweaks I made:
     - Mapping between online / offline uuid will be updated on player connected
     - The sqlite database file can be shared between multiple velocity instances
   - UUID rewrite can be disabled by setting `enabled = false`
+- Added advanced proxy setting to forward client virtual host
+  - setting to overwrite handshake packet host and port between virtual host or backend server
 
 # Velocity
 
