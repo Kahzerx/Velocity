@@ -170,7 +170,6 @@ public class VelocityServerConnection implements MinecraftConnectionAssociation,
 
   private void startHandshake() {
     final MinecraftConnection mc = ensureConnected();
-    PlayerInfoForwarding forwardingMode = server.getConfiguration().getPlayerInfoForwardingMode();
 
     // Initiate the handshake.
     ProtocolVersion protocolVersion = proxyPlayer.getConnection().getProtocolVersion();
@@ -183,6 +182,7 @@ public class VelocityServerConnection implements MinecraftConnectionAssociation,
       playerVhost = registeredServer.getServerInfo().getAddress().getHostString();
     }
 
+    PlayerInfoForwarding forwardingMode = server.getConfiguration().getPlayerInfoForwardingMode();
     HandshakePacket handshake = new HandshakePacket();
     handshake.setIntent(HandshakeIntent.LOGIN);
     handshake.setProtocolVersion(protocolVersion);
