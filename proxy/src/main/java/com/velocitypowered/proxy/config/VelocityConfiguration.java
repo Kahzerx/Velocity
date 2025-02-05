@@ -460,6 +460,11 @@ public class VelocityConfiguration implements ProxyConfig {
     return forceKeyAuthentication;
   }
 
+  // [kahzerx's fork] forward client virtual host
+  public boolean isForwardClientVirtualHost() {
+    return this.advanced.forwardClientVirtualHost;
+  }
+
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
@@ -773,6 +778,8 @@ public class VelocityConfiguration implements ProxyConfig {
     private boolean logPlayerConnections = true;
     @Expose
     private boolean acceptTransfers = false;
+    @Expose
+    private boolean forwardClientVirtualHost = true;  // [kahzerx's fork] forward client virtual host
 
     private Advanced() {
     }
@@ -798,6 +805,7 @@ public class VelocityConfiguration implements ProxyConfig {
         this.logCommandExecutions = config.getOrElse("log-command-executions", false);
         this.logPlayerConnections = config.getOrElse("log-player-connections", true);
         this.acceptTransfers = config.getOrElse("accepts-transfers", false);
+        this.forwardClientVirtualHost = config.getOrElse("forward-client-virtual-host", true);
       }
     }
 
@@ -861,6 +869,10 @@ public class VelocityConfiguration implements ProxyConfig {
       return this.acceptTransfers;
     }
 
+    public boolean isForwardClientVirtualHost() {
+      return forwardClientVirtualHost;
+    }
+
     @Override
     public String toString() {
       return "Advanced{"
@@ -878,6 +890,7 @@ public class VelocityConfiguration implements ProxyConfig {
           + ", logCommandExecutions=" + logCommandExecutions
           + ", logPlayerConnections=" + logPlayerConnections
           + ", acceptTransfers=" + acceptTransfers
+          + ", forwardClientVirtualHost=" + forwardClientVirtualHost
           + '}';
     }
   }
