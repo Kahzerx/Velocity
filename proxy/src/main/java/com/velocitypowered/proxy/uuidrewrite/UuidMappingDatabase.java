@@ -68,7 +68,7 @@ public class UuidMappingDatabase {
     String url = "jdbc:sqlite:" + dbPath;
     this.dataSource.setUrl(url);
 
-    try (var stmt = this.getConnection().createStatement()) {
+    try (var conn = this.getConnection(); var stmt = conn.createStatement()) {
       stmt.executeUpdate(
           "CREATE TABLE IF NOT EXISTS uuid_mapping ("
           + "online_uuid TEXT PRIMARY KEY, "
@@ -79,7 +79,7 @@ public class UuidMappingDatabase {
       stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_online_uuid ON uuid_mapping (online_uuid)");
       stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_offline_uuid ON uuid_mapping (offline_uuid)");
       stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_last_used ON uuid_mapping (updated_at)");
-      stmt.getConnection().commit();
+      conn.commit();
     }
 
     this.vacuumSqlite();
@@ -102,7 +102,7 @@ public class UuidMappingDatabase {
     }
 
     String query = "SELECT online_uuid FROM uuid_mapping WHERE offline_uuid = ? ORDER BY updated_at DESC LIMIT 1";
-    try (var stmt = this.getConnection().prepareStatement(query)) {
+    try (var conn = this.getConnection(); var stmt = conn.prepareStatement(query)) {
       stmt.setString(1, offlineUuid.toString());
       ResultSet resultSet = stmt.executeQuery();
       if (resultSet.next()) {
@@ -121,7 +121,7 @@ public class UuidMappingDatabase {
     }
 
     String sql = "SELECT offline_uuid FROM uuid_mapping WHERE online_uuid = ? ORDER BY updated_at DESC LIMIT 1";
-    try (var stmt = this.getConnection().prepareStatement(sql)) {
+    try (var conn = this.getConnection(); var stmt = conn.prepareStatement(sql)) {
       stmt.setString(1, onlineUuid.toString());
       ResultSet resultSet = stmt.executeQuery();
       if (resultSet.next()) {
@@ -140,7 +140,7 @@ public class UuidMappingDatabase {
 
     long now = System.currentTimeMillis();
     String sqlQuery = "SELECT * FROM uuid_mapping WHERE online_uuid = ?";
-    try (var stmt = this.getConnection().prepareStatement(sqlQuery)) {
+    try (var conn = this.getConnection(); var stmt = conn.prepareStatement(sqlQuery)) {
       stmt.setString(1, onlineUuid.toString());
       ResultSet resultSet = stmt.executeQuery();
       if (
@@ -167,19 +167,20 @@ public class UuidMappingDatabase {
           "INSERT OR REPLACE INTO uuid_mapping (online_uuid, offline_uuid, player_name, updated_at) "
           + "VALUES (?, ?, ?, strftime('%s','now'))";
 
-      var conn = this.getConnection();
-      try (var stmt = conn.prepareStatement(sqlDelete)) {
-        stmt.setString(1, offlineUuid.toString());
-        int cnt = stmt.executeUpdate();
-        logger.debug("Deleted {} existed entries with offline_uuid = {}", cnt, offlineUuid);
+      try (var conn = this.getConnection()) {
+        try (var stmt = conn.prepareStatement(sqlDelete)) {
+          stmt.setString(1, offlineUuid.toString());
+          int cnt = stmt.executeUpdate();
+          logger.debug("Deleted {} existed entries with offline_uuid = {}", cnt, offlineUuid);
+        }
+        try (var stmt = conn.prepareStatement(sqlInsert)) {
+          stmt.setString(1, onlineUuid.toString());
+          stmt.setString(2, offlineUuid.toString());
+          stmt.setString(3, playerName);
+          stmt.executeUpdate();
+        }
+        conn.commit();
       }
-      try (var stmt = conn.prepareStatement(sqlInsert)) {
-        stmt.setString(1, onlineUuid.toString());
-        stmt.setString(2, offlineUuid.toString());
-        stmt.setString(3, playerName);
-        stmt.executeUpdate();
-      }
-      conn.commit();
     } catch (SQLException sqlException) {
       logger.error("createRow update failed", sqlException);
     }
