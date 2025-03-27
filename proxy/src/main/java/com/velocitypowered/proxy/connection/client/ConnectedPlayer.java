@@ -191,7 +191,7 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player, 
   private @Nullable Locale effectiveLocale;
   private final @Nullable IdentifiedKey playerKey;
   private @Nullable ClientSettingsPacket clientSettingsPacket;
-  private final ChatQueue chatQueue;
+  private volatile ChatQueue chatQueue;
   private final ChatBuilderFactory chatBuilderFactory;
 
   // [fallen's fork] player uuid rewrite: store offline uuid for reuse
@@ -241,6 +241,17 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player, 
 
   public ChatQueue getChatQueue() {
     return chatQueue;
+  }
+
+  /**
+   * Discards any messages still being processed by the {@link ChatQueue}, and creates a fresh state for future packets.
+   * This should be used on server switches, or whenever the client resets its own 'last seen' state.
+   */
+  public void discardChatQueue() {
+    // No need for atomic swap, should only be called from event loop
+    final ChatQueue oldChatQueue = chatQueue;
+    chatQueue = new ChatQueue(this);
+    oldChatQueue.close();
   }
 
   public BundleDelimiterHandler getBundleHandler() {
@@ -1300,6 +1311,11 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player, 
   public void switchToConfigState() {
     server.getEventManager().fire(new PlayerEnterConfigurationEvent(this, getConnectionInFlightOrConnectedServer()))
         .completeOnTimeout(null, 5, TimeUnit.SECONDS).thenRunAsync(() -> {
+          // if the connection was closed earlier, there is a risk that the player is no longer connected
+          if (!connection.getChannel().isActive()) {
+            return;
+          }
+
           if (bundleHandler.isInBundleSession()) {
             bundleHandler.toggleBundleSession();
             connection.write(BundleDelimiterPacket.INSTANCE);

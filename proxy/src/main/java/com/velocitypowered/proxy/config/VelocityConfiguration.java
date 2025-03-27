@@ -465,6 +465,10 @@ public class VelocityConfiguration implements ProxyConfig {
     return this.advanced.forwardClientVirtualHost;
   }
 
+  public boolean isEnableReusePort() {
+    return advanced.isEnableReusePort();
+  }
+
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
@@ -780,6 +784,8 @@ public class VelocityConfiguration implements ProxyConfig {
     private boolean acceptTransfers = false;
     @Expose
     private boolean forwardClientVirtualHost = true;  // [kahzerx's fork] forward client virtual host
+    @Expose
+    private boolean enableReusePort = false;
 
     private Advanced() {
     }
@@ -806,6 +812,7 @@ public class VelocityConfiguration implements ProxyConfig {
         this.logPlayerConnections = config.getOrElse("log-player-connections", true);
         this.acceptTransfers = config.getOrElse("accepts-transfers", false);
         this.forwardClientVirtualHost = config.getOrElse("forward-client-virtual-host", true);
+        this.enableReusePort = config.getOrElse("enable-reuse-port", false);
       }
     }
 
@@ -873,6 +880,10 @@ public class VelocityConfiguration implements ProxyConfig {
       return forwardClientVirtualHost;
     }
 
+    public boolean isEnableReusePort() {
+      return enableReusePort;
+    }
+
     @Override
     public String toString() {
       return "Advanced{"
@@ -891,6 +902,7 @@ public class VelocityConfiguration implements ProxyConfig {
           + ", logPlayerConnections=" + logPlayerConnections
           + ", acceptTransfers=" + acceptTransfers
           + ", forwardClientVirtualHost=" + forwardClientVirtualHost
+          + ", enableReusePort=" + enableReusePort
           + '}';
     }
   }
