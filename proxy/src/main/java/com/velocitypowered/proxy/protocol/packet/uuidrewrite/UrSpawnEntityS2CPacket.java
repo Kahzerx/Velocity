@@ -38,10 +38,13 @@ public class UrSpawnEntityS2CPacket implements MinecraftPacket, PacketToRewriteE
 
   private boolean isPlayer;
 
-  private static int getPlayerEntityType(ProtocolVersion version) {
+  private static int getPlayerEntityTypeId(ProtocolVersion version) {
     // https://wiki.vg/Entity_metadata#Mobs
     // https://github.com/Fallen-Breath/mc-registry-dump
-    if (version.noLessThan(ProtocolVersion.MINECRAFT_1_21_4)) {
+    // https://github.com/PrismarineJS/minecraft-data/blob/master/data/pc/1.21.4/entities.json
+    if (version.noLessThan(ProtocolVersion.MINECRAFT_1_21_5)) {
+      return 148;
+    } else if (version.noLessThan(ProtocolVersion.MINECRAFT_1_21_4)) {
       return 147;
     } else if (version.noLessThan(ProtocolVersion.MINECRAFT_1_21_2)) {
       return 148;
@@ -64,7 +67,7 @@ public class UrSpawnEntityS2CPacket implements MinecraftPacket, PacketToRewriteE
     this.remainingBuf = new byte[buf.readableBytes()];
     buf.readBytes(this.remainingBuf);
 
-    this.isPlayer = this.entityType == getPlayerEntityType(protocolVersion);
+    this.isPlayer = this.entityType == getPlayerEntityTypeId(protocolVersion);
   }
 
   @Override
