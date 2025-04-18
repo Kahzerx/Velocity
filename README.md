@@ -23,6 +23,10 @@ A list of small tweaks I made:
   - UUID rewrite can be disabled by setting `enabled = false`
 - Added advanced proxy setting to forward client virtual host
   - setting to overwrite handshake packet host and port between virtual host or backend server
+- Added optional java system property `velocity.skip-uncompressed-packet-size-validation` option 
+  to bypass the [uncompressed packet size validation](https://github.com/PaperMC/Velocity/pull/1527)
+  - `-Dvelocity.skip-uncompressed-packet-size-validation=true`
+  - See also: [PaperMC/Velocity#1556](https://github.com/PaperMC/Velocity/issues/1556), 
 
 # Velocity
 
