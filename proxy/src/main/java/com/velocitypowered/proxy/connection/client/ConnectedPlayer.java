@@ -124,6 +124,7 @@ import net.kyori.adventure.permission.PermissionChecker;
 import net.kyori.adventure.platform.facet.FacetPointers;
 import net.kyori.adventure.platform.facet.FacetPointers.Type;
 import net.kyori.adventure.pointer.Pointers;
+import net.kyori.adventure.pointer.PointersSupplier;
 import net.kyori.adventure.resource.ResourcePackInfoLike;
 import net.kyori.adventure.resource.ResourcePackRequest;
 import net.kyori.adventure.resource.ResourcePackRequestLike;
@@ -153,7 +154,16 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player, 
 
   private static final ComponentLogger logger = ComponentLogger.logger(ConnectedPlayer.class);
 
-  private final Identity identity = new IdentityImpl();
+  private static final @NotNull PointersSupplier<ConnectedPlayer> POINTERS_SUPPLIER =
+          PointersSupplier.<ConnectedPlayer>builder()
+                  .resolving(Identity.UUID, Player::getUniqueId)
+                  .resolving(Identity.NAME, Player::getUsername)
+                  .resolving(Identity.DISPLAY_NAME, player -> Component.text(player.getUsername()))
+                  .resolving(Identity.LOCALE, Player::getEffectiveLocale)
+                  .resolving(PermissionChecker.POINTER, Player::getPermissionChecker)
+                  .resolving(FacetPointers.TYPE, player -> Type.PLAYER)
+                  .build();
+
   /**
    * The actual Minecraft connection. This is actually a wrapper object around the Netty channel.
    */
@@ -182,14 +192,6 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player, 
   private final ResourcePackHandler resourcePackHandler;
   private final BundleDelimiterHandler bundleHandler = new BundleDelimiterHandler(this);
 
-  private final @NotNull Pointers pointers =
-      Player.super.pointers().toBuilder()
-          .withDynamic(Identity.UUID, this::getUniqueId)
-          .withDynamic(Identity.NAME, this::getUsername)
-          .withDynamic(Identity.DISPLAY_NAME, () -> Component.text(this.getUsername()))
-          .withDynamic(Identity.LOCALE, this::getEffectiveLocale)
-          .withStatic(PermissionChecker.POINTER, getPermissionChecker())
-          .withStatic(FacetPointers.TYPE, Type.PLAYER).build();
   private @Nullable String clientBrand;
   private @Nullable Locale effectiveLocale;
   private final @Nullable IdentifiedKey playerKey;
@@ -264,7 +266,7 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player, 
 
   @Override
   public @NonNull Identity identity() {
-    return this.identity;
+    return Identity.identity(this.getUniqueId());
   }
 
   @Override
@@ -376,7 +378,7 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player, 
 
   @Override
   public @NotNull Pointers pointers() {
-    return this.pointers;
+    return POINTERS_SUPPLIER.view(this);
   }
 
   @Override
@@ -409,14 +411,20 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player, 
   }
 
   /**
-   * Translates the message in the user's locale.
+   * Translates the message in the user's locale, falling back to the default locale if not set.
    *
    * @param message the message to translate
    * @return the translated message
    */
   public Component translateMessage(Component message) {
-    Locale locale = ClosestLocaleMatcher.INSTANCE
-        .lookupClosest(getEffectiveLocale() == null ? Locale.getDefault() : getEffectiveLocale());
+    Locale locale = this.getEffectiveLocale();
+    if (locale == null && settings != null) {
+      locale = settings.getLocale();
+    }
+    if (locale == null) {
+      locale = Locale.getDefault();
+    }
+    locale = ClosestLocaleMatcher.INSTANCE.lookupClosest(locale);
     return GlobalTranslator.render(message, locale);
   }
 
@@ -1331,6 +1339,7 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player, 
             connection.write(BundleDelimiterPacket.INSTANCE);
           }
           connection.write(StartUpdatePacket.INSTANCE);
+          connection.pendingConfigurationSwitch = true;
           connection.getChannel().pipeline().get(MinecraftEncoder.class).setState(StateRegistry.CONFIG);
           // Make sure we don't send any play packets to the player after update start
           connection.addPlayPacketQueueHandler();
@@ -1371,14 +1380,6 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player, 
   @Override
   public @Nullable IdentifiedKey getIdentifiedKey() {
     return playerKey;
-  }
-
-  private class IdentityImpl implements Identity {
-
-    @Override
-    public @NonNull UUID uuid() {
-      return ConnectedPlayer.this.getUniqueId();
-    }
   }
 
   @Override
