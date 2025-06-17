@@ -27,7 +27,8 @@ import java.util.UUID;
 
 /**
  * [fallen's fork] player uuid rewrite - entity packet
- * used in mc >= 1.20.2
+ * Used in mc >= 1.20.2
+ * For mc < 1.20.2, {@link UrSpawnPlayerS2CPacket} does the thing
  */
 public class UrSpawnEntityS2CPacket implements MinecraftPacket, PacketToRewriteEntityUuid {
 
@@ -38,25 +39,28 @@ public class UrSpawnEntityS2CPacket implements MinecraftPacket, PacketToRewriteE
 
   private boolean isPlayer;
 
+  private record EntityTypeId(ProtocolVersion protocolVersion, int id) {}
+
+  // https://wiki.vg/Entity_metadata#Mobs
+  // https://github.com/Fallen-Breath/mc-registry-dump/tree/master/output, data["entity_type"]["minecraft:player"]
+  // https://github.com/PrismarineJS/minecraft-data/blob/master/data/pc/1.21.4/entities.json
+  private static final EntityTypeId[] PLAYER_ENTITY_TYPE_ID_MAPPINGS = new EntityTypeId[]{
+          new EntityTypeId(ProtocolVersion.MINECRAFT_1_21_6, 149),
+          new EntityTypeId(ProtocolVersion.MINECRAFT_1_21_5, 148),
+          new EntityTypeId(ProtocolVersion.MINECRAFT_1_21_4, 147),
+          new EntityTypeId(ProtocolVersion.MINECRAFT_1_21_2, 148),
+          new EntityTypeId(ProtocolVersion.MINECRAFT_1_20_5, 128),
+          new EntityTypeId(ProtocolVersion.MINECRAFT_1_20_3, 124),
+          new EntityTypeId(ProtocolVersion.MINECRAFT_1_20_2, 122)
+  };
+
   private static int getPlayerEntityTypeId(ProtocolVersion version) {
-    // https://wiki.vg/Entity_metadata#Mobs
-    // https://github.com/Fallen-Breath/mc-registry-dump
-    // https://github.com/PrismarineJS/minecraft-data/blob/master/data/pc/1.21.4/entities.json
-    if (version.noLessThan(ProtocolVersion.MINECRAFT_1_21_5)) {
-      return 148;
-    } else if (version.noLessThan(ProtocolVersion.MINECRAFT_1_21_4)) {
-      return 147;
-    } else if (version.noLessThan(ProtocolVersion.MINECRAFT_1_21_2)) {
-      return 148;
-    } else if (version.noLessThan(ProtocolVersion.MINECRAFT_1_20_5)) {
-      return 128;
-    } else if (version.noLessThan(ProtocolVersion.MINECRAFT_1_20_3)) {
-      return 124;
-    } else if (version.noLessThan(ProtocolVersion.MINECRAFT_1_20_2)) {
-      return 122;
-    } else {
-      throw new IllegalArgumentException("Unsupported protocol version: " + version);
+    for (EntityTypeId m : PLAYER_ENTITY_TYPE_ID_MAPPINGS) {
+      if (version.noLessThan(m.protocolVersion())) {
+        return m.id();
+      }
     }
+    throw new IllegalArgumentException("Unsupported protocol version: " + version);
   }
 
   @Override
