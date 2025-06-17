@@ -39,10 +39,7 @@ public class MinecraftCompressDecoder extends MessageToMessageDecoder<ByteBuf> {
   private static final int UNCOMPRESSED_CAP =
       Boolean.getBoolean("velocity.increased-compression-cap")
           ? HARD_MAXIMUM_UNCOMPRESSED_SIZE : VANILLA_MAXIMUM_UNCOMPRESSED_SIZE;
-
-  // [fallen's fork]: skip uncompressed packet size validation
-  private static final boolean SKIP_UNCOMPRESSED_PACKET_SIZE_VALIDATION =
-      Boolean.getBoolean("velocity.skip-uncompressed-packet-size-validation");
+  private static final boolean SKIP_COMPRESSION_VALIDATION = Boolean.getBoolean("velocity.skip-uncompressed-packet-size-validation");
 
   private int threshold;
   private final VelocityCompressor compressor;
@@ -56,11 +53,10 @@ public class MinecraftCompressDecoder extends MessageToMessageDecoder<ByteBuf> {
   protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
     int claimedUncompressedSize = ProtocolUtils.readVarInt(in);
     if (claimedUncompressedSize == 0) {
-      // [fallen's fork]: skip uncompressed packet size validation
-      if (!SKIP_UNCOMPRESSED_PACKET_SIZE_VALIDATION) {
+      if (!SKIP_COMPRESSION_VALIDATION) {
         int actualUncompressedSize = in.readableBytes();
         checkFrame(actualUncompressedSize < threshold, "Actual uncompressed size %s is greater than"
-                + " threshold %s", actualUncompressedSize, threshold);
+            + " threshold %s", actualUncompressedSize, threshold);
       }
       // This message is not compressed.
       out.add(in.retain());
