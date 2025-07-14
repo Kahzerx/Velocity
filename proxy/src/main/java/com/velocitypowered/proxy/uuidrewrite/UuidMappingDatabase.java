@@ -37,7 +37,6 @@ public class UuidMappingDatabase {
   private static final Logger logger = LogManager.getLogger(UuidMappingDatabase.class);
   private static final UuidMappingDatabase INSTANCE = new UuidMappingDatabase();
   private final SQLiteDataSource dataSource;
-  private Connection connection;
   private boolean enabled = false;
 
   private UuidMappingDatabase() {
@@ -57,11 +56,9 @@ public class UuidMappingDatabase {
   }
 
   private Connection getConnection() throws SQLException {
-    if (this.connection == null || this.connection.isClosed()) {
-      this.connection = this.dataSource.getConnection();
-      this.connection.setAutoCommit(false);
-    }
-    return this.connection;
+    Connection conn = this.dataSource.getConnection();
+    conn.setAutoCommit(false);
+    return conn;
   }
 
   public void init(String dbPath) throws SQLException {
@@ -86,13 +83,6 @@ public class UuidMappingDatabase {
   }
 
   public void close() {
-    try {
-      if (this.connection != null && !this.connection.isClosed()) {
-        this.connection.close();
-      }
-    } catch (SQLException sqlException) {
-      logger.error("close failed", sqlException);
-    }
   }
 
   @Nullable
