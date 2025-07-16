@@ -769,7 +769,11 @@ public enum StateRegistry {
               map(0x30, MINECRAFT_1_19_1, false),
               map(0x33, MINECRAFT_1_20_2, false),
               map(0x34, MINECRAFT_1_20_3, false),
-              map(0x37, MINECRAFT_1_20_5, false));
+              map(0x37, MINECRAFT_1_20_5, false),
+              map(0x39, MINECRAFT_1_21_2, false),
+              map(0x3B, MINECRAFT_1_21_4, false),
+              map(0x3C, MINECRAFT_1_21_5, false),
+              map(0x3D, MINECRAFT_1_21_6, false));
       // [fallen's fork] ends
     }
   },
