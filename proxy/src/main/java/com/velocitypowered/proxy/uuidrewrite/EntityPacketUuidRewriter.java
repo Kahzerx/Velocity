@@ -28,7 +28,6 @@ import org.apache.logging.log4j.Logger;
  */
 public class EntityPacketUuidRewriter {
 
-  private static final boolean DEBUG = false;
   private static final Logger logger = LogManager.getLogger(EntityPacketUuidRewriter.class);
 
   public static void rewriteS2C(VelocityServer server, Player connectionPlayer, PacketToRewriteEntityUuid packet) {
@@ -41,9 +40,9 @@ public class EntityPacketUuidRewriter {
 
   private static void rewrite(VelocityServer server, Player connectionPlayer, PacketToRewriteEntityUuid packet,
                               RewriteDirection direction) {
-    if (DEBUG) {
-      logger.info("EPUR for {} start, packet {} ({} {})", connectionPlayer.getUsername(), packet.getClass().getSimpleName(),
-              packet.isPlayer(), packet.getEntityUuid());
+    if (UuidRewriter.DEBUG) {
+      logger.info("EPUR for {} start, packet {} {} ({} {})", connectionPlayer.getUsername(), packet.getClass().getSimpleName(),
+              direction.name(), packet.isPlayer(), packet.getEntityUuid());
     }
 
     if (!UuidRewriteUtils.isUuidRewriteEnabled(server.getConfiguration())) {

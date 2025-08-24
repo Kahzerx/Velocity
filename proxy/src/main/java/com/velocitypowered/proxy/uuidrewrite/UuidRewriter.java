@@ -20,7 +20,10 @@ package com.velocitypowered.proxy.uuidrewrite;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.util.GameProfile;
 import com.velocitypowered.proxy.VelocityServer;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -30,11 +33,15 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 @SuppressWarnings({"MissingJavadocMethod", "MissingJavadocType"})
 public interface UuidRewriter {
 
+  boolean DEBUG = Boolean.getBoolean("velocity.debug-uuid-rewriter");
+
   // -------------------- Interfaces --------------------
 
   @Nullable UUID toOnline(UUID offlineUuid);
 
   @Nullable UUID toOffline(UUID onlineUuid);
+
+  @Nullable GameProfile getOnlineProfile(UUID onlineUuid);
 
   default @Nullable UUID toClient(UUID serverUuid) {
     return this.toOnline(serverUuid);
@@ -65,10 +72,12 @@ public interface UuidRewriter {
 
   class MapRewriter implements UuidRewriter {
     private final BiMap<UUID, UUID> offlineToOnline = HashBiMap.create();
+    private final Map<UUID, GameProfile> onlineToGameProfile = new HashMap<>();
 
     private MapRewriter(VelocityServer server) {
       for (Player player : server.getAllPlayers()) {
         this.offlineToOnline.put(player.getOfflineUuid(), player.getUniqueId());
+        this.onlineToGameProfile.put(player.getUniqueId(), player.getGameProfile());
       }
     }
 
@@ -80,6 +89,11 @@ public interface UuidRewriter {
     @Override
     public @Nullable UUID toOffline(UUID onlineUuid) {
       return this.offlineToOnline.inverse().get(onlineUuid);
+    }
+
+    @Override
+    public @Nullable GameProfile getOnlineProfile(UUID onlineUuid) {
+      return this.onlineToGameProfile.get(onlineUuid);
     }
   }
 
@@ -97,6 +111,12 @@ public interface UuidRewriter {
       var db = UuidMappingDatabase.getInstance();
       return db.queryOfflineUuid(onlineUuid);
     }
+
+    @Override
+    public @Nullable GameProfile getOnlineProfile(UUID onlineUuid) {
+      // TODO: implement this
+      return null;
+    }
   }
 
   class ChainedRewriter implements UuidRewriter {
@@ -108,6 +128,9 @@ public interface UuidRewriter {
 
     @Override
     public @Nullable UUID toOnline(UUID offlineUuid) {
+      if (offlineUuid == null) {
+        return null;
+      }
       for (UuidRewriter rewriter : this.rewriters) {
         var result = rewriter.toOnline(offlineUuid);
         if (result != null) {
@@ -119,8 +142,25 @@ public interface UuidRewriter {
 
     @Override
     public @Nullable UUID toOffline(UUID onlineUuid) {
+      if (onlineUuid == null) {
+        return null;
+      }
       for (UuidRewriter rewriter : this.rewriters) {
         var result = rewriter.toOffline(onlineUuid);
+        if (result != null) {
+          return result;
+        }
+      }
+      return null;
+    }
+
+    @Override
+    public @Nullable GameProfile getOnlineProfile(UUID onlineUuid) {
+      if (onlineUuid == null) {
+        return null;
+      }
+      for (UuidRewriter rewriter : this.rewriters) {
+        var result = rewriter.getOnlineProfile(onlineUuid);
         if (result != null) {
           return result;
         }
