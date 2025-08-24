@@ -114,8 +114,8 @@ public interface UuidRewriter {
 
     @Override
     public @Nullable GameProfile getOnlineProfile(UUID onlineUuid) {
-      // TODO: implement this
-      return null;
+      var db = UuidMappingDatabase.getInstance();
+      return db.queryOnlineProfile(onlineUuid);
     }
   }
 

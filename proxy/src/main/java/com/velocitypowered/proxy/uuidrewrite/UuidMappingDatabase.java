@@ -17,9 +17,11 @@
 
 package com.velocitypowered.proxy.uuidrewrite;
 
+import com.velocitypowered.api.util.GameProfile;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
@@ -38,6 +40,7 @@ public class UuidMappingDatabase {
   private static final UuidMappingDatabase INSTANCE = new UuidMappingDatabase();
   private final SQLiteDataSource dataSource;
   private boolean enabled = false;
+  private String encryptionKey;
 
   private UuidMappingDatabase() {
     SQLiteConfig config = new SQLiteConfig();
@@ -53,6 +56,10 @@ public class UuidMappingDatabase {
 
   public void setEnabled(boolean enabled) {
     this.enabled = enabled;
+  }
+
+  public void setEncryptionKey(String encryptionKey) {
+    this.encryptionKey = encryptionKey;
   }
 
   private Connection getConnection() throws SQLException {
@@ -71,12 +78,30 @@ public class UuidMappingDatabase {
           + "online_uuid TEXT PRIMARY KEY, "
           + "offline_uuid TEXT, "
           + "player_name TEXT, "
-          + "updated_at INTEGER)"
+          + "updated_at INTEGER, "
+          + "online_profile BLOB)"
       );
       stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_online_uuid ON uuid_mapping (online_uuid)");
       stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_offline_uuid ON uuid_mapping (offline_uuid)");
       stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_last_used ON uuid_mapping (updated_at)");
       conn.commit();
+    }
+    try (var conn = this.getConnection(); var stmt = conn.createStatement()) {
+      // Check if online_profile column exists
+      ResultSet rs = stmt.executeQuery("PRAGMA table_info(uuid_mapping)");
+      boolean columnExists = false;
+      while (rs.next()) {
+        if (rs.getString("name").equals("online_profile")) {
+          columnExists = true;
+          break;
+        }
+      }
+
+      if (!columnExists) {
+        logger.info("online_profile column not exists, creating");
+        stmt.executeUpdate("ALTER TABLE uuid_mapping ADD COLUMN online_profile BLOB");
+        conn.commit();
+      }
     }
 
     this.vacuumSqlite();
@@ -123,10 +148,37 @@ public class UuidMappingDatabase {
     return null;
   }
 
-  public void createNewEntry(UUID onlineUuid, UUID offlineUuid, String playerName) {
+  @Nullable
+  public GameProfile queryOnlineProfile(UUID onlineUuid) {
+    if (!this.enabled) {
+      return null;
+    }
+
+    String sql = "SELECT online_profile FROM uuid_mapping WHERE online_uuid = ? ORDER BY updated_at DESC LIMIT 1";
+    try (var conn = this.getConnection(); var stmt = conn.prepareStatement(sql)) {
+      stmt.setString(1, onlineUuid.toString());
+      ResultSet resultSet = stmt.executeQuery();
+      if (resultSet.next()) {
+        byte[] onlineProfileBuf = resultSet.getBytes("online_profile");
+        if (onlineProfileBuf == null || onlineProfileBuf.length == 0) {
+          return null;
+        } else {
+          logger.debug("queryOfflineUuid reading onlineProfileBuf with length {}", onlineProfileBuf.length);
+          return UuidMappingDataBaseUtils.deserializeGameProfile(onlineProfileBuf, this.encryptionKey);
+        }
+      }
+    } catch (SQLException sqlException) {
+      logger.error("queryOfflineUuid failed", sqlException);
+    }
+    return null;
+  }
+
+  public void createNewEntry(UUID onlineUuid, UUID offlineUuid, String playerName, GameProfile gameProfile) {
     if (!this.enabled) {
       return;
     }
+
+    byte[] onlineProfileBuf = UuidMappingDataBaseUtils.serializeGameProfile(gameProfile, this.encryptionKey);
 
     long now = System.currentTimeMillis();
     String sqlQuery = "SELECT * FROM uuid_mapping WHERE online_uuid = ?";
@@ -138,6 +190,7 @@ public class UuidMappingDatabase {
           && Objects.equals(resultSet.getString("player_name"), playerName)
           && Objects.equals(resultSet.getString("offline_uuid"), offlineUuid.toString())
           && Objects.equals(resultSet.getString("online_uuid"), onlineUuid.toString())
+          && Arrays.equals(resultSet.getBytes("online_profile"), onlineProfileBuf)
       ) {
         // no changes to this player
         if (now / 1000 - resultSet.getBigDecimal("updated_at").longValue() < 60 * 60) {  // 1h cooldown
@@ -154,8 +207,8 @@ public class UuidMappingDatabase {
     try {
       String sqlDelete = "DELETE FROM uuid_mapping WHERE offline_uuid = ?";
       String sqlInsert =
-          "INSERT OR REPLACE INTO uuid_mapping (online_uuid, offline_uuid, player_name, updated_at) "
-          + "VALUES (?, ?, ?, strftime('%s','now'))";
+          "INSERT OR REPLACE INTO uuid_mapping (online_uuid, offline_uuid, player_name, updated_at, online_profile) "
+          + "VALUES (?, ?, ?, strftime('%s','now'), ?)";
 
       try (var conn = this.getConnection()) {
         try (var stmt = conn.prepareStatement(sqlDelete)) {
@@ -167,6 +220,7 @@ public class UuidMappingDatabase {
           stmt.setString(1, onlineUuid.toString());
           stmt.setString(2, offlineUuid.toString());
           stmt.setString(3, playerName);
+          stmt.setBytes(4, onlineProfileBuf);
           stmt.executeUpdate();
         }
         conn.commit();

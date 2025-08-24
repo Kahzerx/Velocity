@@ -20,6 +20,7 @@ A list of small tweaks I made:
     - Enabled with `databaseEnabled = true`, database path configurable with `databasePath`
     - Mapping between online / offline uuid will be updated on player connected
     - The sqlite database file can be shared between multiple velocity instances
+    - To secure the serialized GameProfile object, you can provide an optional `databaseEncryptionKey` secret for encryption
   - UUID rewrite can be disabled by setting `enabled = false`
 - Added advanced proxy setting to forward client virtual host
   - setting to overwrite handshake packet host and port between virtual host or backend server
