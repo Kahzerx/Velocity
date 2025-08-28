@@ -44,7 +44,6 @@ public class UuidRewriteHooks {
         config.setUuidRewriteDatabaseEnabled(false);
       }
     }
-    db.setEncryptionKey(config.getUuidRewriteDatabaseEncryptionKey());
     db.setEnabled(config.isUuidRewriteDatabaseEnabled());
   }
 

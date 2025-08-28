@@ -491,10 +491,6 @@ public class VelocityConfiguration implements ProxyConfig {
   public String getUuidRewriteDatabasePath() {
     return uuidRewrite.getDatabasePath();
   }
-
-  public String getUuidRewriteDatabaseEncryptionKey() {
-    return uuidRewrite.getDatabaseEncryptionKey();
-  }
   // [fallen's fork] player uuid rewrite ends
 
   public boolean isForceKeyAuthentication() {
@@ -1035,15 +1031,12 @@ public class VelocityConfiguration implements ProxyConfig {
     private boolean databaseEnabled = false;
     @Expose
     private String databasePath = "uuid_mapping.db";
-    @Expose
-    private String databaseEncryptionKey = "";
 
     public UuidRewrite(CommentedConfig config) {
       if (config != null) {
         this.enabled = config.getOrElse("enabled", true);
         this.databaseEnabled = config.getOrElse("databaseEnabled", false);
         this.databasePath = config.getOrElse("databasePath", "uuid_mapping.db");
-        this.databaseEncryptionKey = config.getOrElse("databaseEncryptionKey", "");
       }
     }
 
@@ -1061,10 +1054,6 @@ public class VelocityConfiguration implements ProxyConfig {
 
     public String getDatabasePath() {
       return databasePath;
-    }
-
-    public String getDatabaseEncryptionKey() {
-      return databaseEncryptionKey;
     }
   }
 

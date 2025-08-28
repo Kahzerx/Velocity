@@ -40,7 +40,6 @@ public class UuidMappingDatabase {
   private static final UuidMappingDatabase INSTANCE = new UuidMappingDatabase();
   private final SQLiteDataSource dataSource;
   private boolean enabled = false;
-  private String encryptionKey;
 
   private UuidMappingDatabase() {
     SQLiteConfig config = new SQLiteConfig();
@@ -56,10 +55,6 @@ public class UuidMappingDatabase {
 
   public void setEnabled(boolean enabled) {
     this.enabled = enabled;
-  }
-
-  public void setEncryptionKey(String encryptionKey) {
-    this.encryptionKey = encryptionKey;
   }
 
   private Connection getConnection() throws SQLException {
@@ -164,7 +159,7 @@ public class UuidMappingDatabase {
           return null;
         } else {
           logger.debug("queryOfflineUuid reading onlineProfileBuf with length {}", onlineProfileBuf.length);
-          return UuidMappingDataBaseUtils.deserializeGameProfile(onlineProfileBuf, this.encryptionKey);
+          return UuidMappingDataBaseUtils.deserializeGameProfile(onlineProfileBuf);
         }
       }
     } catch (SQLException sqlException) {
@@ -178,7 +173,7 @@ public class UuidMappingDatabase {
       return;
     }
 
-    byte[] onlineProfileBuf = UuidMappingDataBaseUtils.serializeGameProfile(gameProfile, this.encryptionKey);
+    byte[] onlineProfileBuf = UuidMappingDataBaseUtils.serializeGameProfile(gameProfile);
 
     long now = System.currentTimeMillis();
     String sqlQuery = "SELECT * FROM uuid_mapping WHERE online_uuid = ?";
