@@ -808,6 +808,8 @@ public enum StateRegistry {
           map(0x87, MINECRAFT_1_21_9, false));
 
       // [fallen's fork] player uuid rewrite - entity packet
+      // see also: https://github.com/derklaro/mc-protocol
+      // e.g., https://github.com/derklaro/mc-protocol/blob/1.21.8/readme.md
       clientbound.register(UrSpawnPlayerS2CPacket.class, UrSpawnPlayerS2CPacket::new,
               map(0x0C, MINECRAFT_1_8, false),
               map(0x05, MINECRAFT_1_9, false),
@@ -816,8 +818,10 @@ public enum StateRegistry {
               map(0x03, MINECRAFT_1_19_4, false),
               map(-1, MINECRAFT_1_20_2, false));
       clientbound.register(UrSpawnEntityS2CPacket.class, UrSpawnEntityS2CPacket::new,
+              // the "Add Entity" S2C packet
               map(0x01, MINECRAFT_1_20_2, false));
       serverbound.register(UrSpectatorTeleportC2SPacket.class, UrSpectatorTeleportC2SPacket::new,
+              // the "Teleport To Entity" C2S packet
               map(0x18, MINECRAFT_1_8, false),
               map(0x1B, MINECRAFT_1_9, false),
               map(0x1E, MINECRAFT_1_12, false),
