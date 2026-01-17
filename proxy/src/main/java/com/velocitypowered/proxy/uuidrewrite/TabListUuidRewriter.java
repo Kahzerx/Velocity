@@ -29,11 +29,16 @@ import com.velocitypowered.proxy.protocol.packet.UpsertPlayerInfoPacket;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * [fallen's fork] player uuid rewrite - tab list entry: rewrite logic.
  */
+@SuppressWarnings("ALL")
 public class TabListUuidRewriter {
+
+  private static final Logger logger = LogManager.getLogger(EntityPacketUuidRewriter.class);
 
   @SuppressWarnings("BooleanMethodIsAlwaysInverted")
   private static boolean shouldRewrite(VelocityServer server) {
@@ -83,7 +88,7 @@ public class TabListUuidRewriter {
   }
 
   /**
-   * Rewrite uuid for a LegacyPlayerListItem packet.
+   * Rewrite uuid for a LegacyPlayerListItem packet (S -> C).
    */
   public static void rewrite(VelocityServer server, LegacyPlayerListItemPacket packet) {
     if (!shouldRewrite(server)) {
@@ -93,11 +98,16 @@ public class TabListUuidRewriter {
     var rewriter = UuidRewriter.create(server);
     packet.getItems().replaceAll(item -> {
       var clientSideUuid = rewriter.toClient(item.getUuid());
+      var onlineProfile = rewriter.getOnlineProfile(clientSideUuid);
+      if (UuidRewriter.DEBUG) {
+        logger.info("TLUR for packet {}: S={} -> C={} ({})",
+                packet.getClass().getSimpleName(), item.getUuid(), clientSideUuid, onlineProfile);
+      }
       if (clientSideUuid != null && !clientSideUuid.equals(item.getUuid())) {
         var newItem = new LegacyPlayerListItemPacket.Item(clientSideUuid);
 
         newItem.setName(item.getName());
-        newItem.setProperties(item.getProperties());
+        newItem.setProperties(onlineProfile != null ? onlineProfile.getProperties() : item.getProperties());
         newItem.setGameMode(item.getGameMode());
         newItem.setLatency(item.getLatency());
         newItem.setDisplayName(item.getDisplayName());
@@ -111,7 +121,7 @@ public class TabListUuidRewriter {
   }
 
   /**
-   * Rewrite uuid for a UpsertPlayerInfo packet.
+   * Rewrite uuid for a UpsertPlayerInfo packet (S -> C).
    */
   public static void rewrite(VelocityServer server, UpsertPlayerInfoPacket packet) {
     if (!shouldRewrite(server)) {
@@ -121,10 +131,15 @@ public class TabListUuidRewriter {
     var rewriter = UuidRewriter.create(server);
     packet.getEntries().replaceAll(entry -> {
       var clientSideUuid = rewriter.toClient(entry.getProfileId());
+      var onlineProfile = rewriter.getOnlineProfile(clientSideUuid);
+      if (UuidRewriter.DEBUG) {
+        logger.info("TLUR for packet {}: S={} -> C={} ({})",
+                packet.getClass().getSimpleName(), entry.getProfileId(), clientSideUuid, onlineProfile);
+      }
       if (clientSideUuid != null && !clientSideUuid.equals(entry.getProfileId())) {
         var newEntry = new UpsertPlayerInfoPacket.Entry(clientSideUuid);
 
-        newEntry.setProfile(entry.getProfile());
+        newEntry.setProfile(onlineProfile != null ? onlineProfile : entry.getProfile());
         newEntry.setListed(entry.isListed());
         newEntry.setLatency(entry.getLatency());
         newEntry.setGameMode(entry.getGameMode());
@@ -139,7 +154,7 @@ public class TabListUuidRewriter {
   }
 
   /**
-   * Rewrite uuid for a RemovePlayerInfo packet.
+   * Rewrite uuid for a RemovePlayerInfo packet (S -> C).
    */
   public static void rewrite(VelocityServer server, RemovePlayerInfoPacket packet) {
     if (!shouldRewrite(server)) {
@@ -148,7 +163,14 @@ public class TabListUuidRewriter {
 
     var rewriter = UuidRewriter.create(server);
     var newProfiles = packet.getProfilesToRemove().stream()
-        .map(serverUuid -> Optional.ofNullable(rewriter.toClient(serverUuid)).orElse(serverUuid))
+        .map(serverUuid -> {
+          var newUuid = Optional.ofNullable(rewriter.toClient(serverUuid)).orElse(serverUuid);
+          if (UuidRewriter.DEBUG) {
+            logger.info("TLUR for packet {}: S={} -> C={}",
+                    packet.getClass().getSimpleName(), serverUuid, newUuid);
+          }
+          return newUuid;
+        })
         .collect(Collectors.toList());
 
     packet.setProfilesToRemove(newProfiles);

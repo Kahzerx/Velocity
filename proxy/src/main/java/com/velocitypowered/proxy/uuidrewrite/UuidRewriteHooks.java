@@ -58,7 +58,7 @@ public class UuidRewriteHooks {
     var config = server.getConfiguration();
     if (UuidRewriteUtils.isUuidRewriteEnabled(config)) {
       if (config.isUuidRewriteDatabaseEnabled()) {
-        db.createNewEntry(player.getUniqueId(), player.getOfflineUuid(), player.getUsername());
+        db.createNewEntry(player.getUniqueId(), player.getOfflineUuid(), player.getUsername(), player.getGameProfile());
       }
     }
   }
